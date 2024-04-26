@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from time import time
 import dask.dataframe as dd
-import hvplot
+import hvplot.dask
 
 
 def plot_features(df):
@@ -16,8 +16,8 @@ def plot_features(df):
     # Make boxplots for variables with range of numeric variables, see Assignment2 pdf, Table 1
     df_num = df.select_dtypes(include=['float64'])
     # Use hvplot for plotting because dataframe is too large!
-    #df_num.hvplot.box()
-    
+    boxplots = df_num.hvplot.box()
+    #hvplot.show(boxplots)
     return
 
 
