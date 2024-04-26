@@ -1,4 +1,6 @@
 # custom 
+.idea
+*.h5
 *.csv
 *.xlsx
 *.png
