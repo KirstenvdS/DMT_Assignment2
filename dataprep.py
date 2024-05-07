@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from time import time
 import dask.dataframe as dd
+from miceforest import ImputationKernel
+
 
 
 def remove_outliers(df):
@@ -12,6 +14,36 @@ def remove_outliers(df):
 
 def impute_missing_values(df):
     """Impute missing values using x strategy"""
+    N = len(df.index)
+
+    # Impute customer previous star ratings & previous spends
+    df_sub = df[["visitor_location_country_id", "srch_destination_id", "srch_length_of_stay", "srch_booking_window",
+                 "srch_adults_count", "srch_children_count", "srch_room_count", "srch_saturday_night_bool",
+                 "orig_destination_distance", "customer_past_spends", "customer_past_starrating", "customer_type",
+                 "travel_type", "stay_type", "customer_group", "day_of_travel_type"]]
+    cat_features = ["visitor_location_country_id", "srch_destination_id",
+                    "srch_saturday_night_bool", "customer_type", "customer_past_spends", "customer_past_starrating",
+                    "travel_type", "stay_type", "customer_group", "day_of_travel_type"]
+
+    for c in cat_features:
+        df_sub.loc[:, c] = pd.Categorical(df_sub[c])
+
+    print(df_sub.dtypes)
+
+    # Following code from https://www.datacamp.com/tutorial/techniques-to-handle-missing-data-values :
+    mice_kernel = ImputationKernel(
+        data=df_sub,
+        variable_schema=["customer_past_spends", "customer_past_starrating"],
+        data_subset=0.1, # only use random 10% of the data for each iteration to save time
+        save_all_iterations=False,
+        save_models=0,
+        random_state=2024  # random seed to make results reproducible
+    )
+    mice_kernel.mice(2, compile_candidates=True) # compile_candidates=True to save time
+    df_sub_imp = mice_kernel.complete_data()
+    print("Customer past spends after imputation: ", df_sub_imp["customer_past_spends"].value_counts(dropna=False)/N)
+    print("Customer past starrating after imputation: ", df_sub_imp["customer_past_starrating"].value_counts(dropna=False)/N)
+
     return df
 
 
@@ -19,13 +51,27 @@ def generate_features(df):
     """Engineer new features and add them to the dataframe. Delete unused features. """
     N = len(df.index)
 
+    # Customer previous spends
+    cond_high_spends = df.visitor_hist_adr_usd > 160 # value obtained after looking at histogram
+    cond_low_spends = df.visitor_hist_adr_usd <= 160
+    df["customer_past_spends"] = np.select([cond_high_spends, cond_low_spends], ["high", "low"], pd.NA)
+    print("Customer past spends: ", df["customer_past_spends"].value_counts(dropna=False)/N)
+
+    # Customer previous starrating
+    cond_high_stars = df.visitor_hist_starrating > 3.5 # value obtained after looking at histogram
+    cond_low_stars = df.visitor_hist_starrating <= 3.5
+    df["customer_past_starrating"] = np.select([cond_high_stars, cond_low_stars], ["high", "low"], pd.NA)
+    print("Customer past starrating: ", df["customer_past_starrating"].value_counts(dropna=False)/N)
+
     # Stay type
     cond_single_night = (df.srch_saturday_night_bool == False) & (df.srch_length_of_stay == 1)
     cond_saturday_night = (df.srch_saturday_night_bool == True) & (df.srch_length_of_stay == 1)
     cond_weekend = (df.srch_saturday_night_bool == True) & (df.srch_length_of_stay == 2)
-    cond_business_trip = (df.srch_saturday_night_bool == False) & (df.srch_length_of_stay > 1)
-    cond_long_weekend = (df.srch_saturday_night_bool== True) & (df.srch_length_of_stay > 2)
-    cond_long_stay = df.srch_length_of_stay > 5 # saturday night must be included
+    cond_business_trip = (df.srch_saturday_night_bool == False) & (df.srch_length_of_stay > 1) \
+                         & (df.srch_length_of_stay <= 5)
+    cond_long_weekend = (df.srch_saturday_night_bool== True) & (df.srch_length_of_stay > 2) \
+                        & (df.srch_length_of_stay <= 5)
+    cond_long_stay = df.srch_length_of_stay > 5
     df["stay_type"] = np.select([cond_long_weekend, cond_weekend, cond_saturday_night, cond_long_stay,
                                  cond_single_night, cond_business_trip],
                                 ["extended_weekend", "weekend", "saturday_night", "long_stay",
@@ -52,9 +98,7 @@ def generate_features(df):
     print("Customer groups: ", df["customer_group"].value_counts(dropna=False)/N)
 
     # Customer booking lead time
-    df.hist(column="srch_booking_window", bins=30)
-    plt.show()
-    cutoff = 14
+    cutoff = 14 # value obtained from histogram of length of srch_booking_window
     cond_late = df.srch_booking_window <= cutoff
     cond_early_planner = df.srch_booking_window > cutoff
     df["customer_type"] = np.select([cond_late, cond_early_planner], ["late", "early_planner"], pd.NA)
@@ -79,7 +123,8 @@ if __name__ == '__main__':
     start = time()
     df = dd.read_csv("training_set_VU_DM.csv")
     df = df.compute() # convert to pandas because no significant performance difference for further calculations
-    generate_features(df)
+    df = generate_features(df)
+    impute_missing_values(df)
     end = time()
     print(f"Total runtime: {end - start}")  # secs
 
