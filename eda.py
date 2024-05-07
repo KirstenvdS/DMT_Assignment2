@@ -87,15 +87,15 @@ def plot_correlations(df):
     return
 
 if __name__ == '__main__':
-    # Execute once: Import dataset
+    # Import dataset
     start = time()
     df = dd.read_csv("training_set_VU_DM.csv")
     end = time()
     print(f"Loading csv takes {end-start}.") #22 secs with pandas, 0.02 s with dask
 
     # Plot features
-    plot_features(df) # runtime ~ 45 seconds
-    #plot_missing_values(df) # runtime ~ 20 seconds
+    #plot_features(df) # runtime ~ 45 seconds
+    plot_missing_values(df) # runtime ~ 20 seconds
     plot_correlations(df)
     end2 = time()
     print(f"Total runtime: {end2- start}") # 69 seconds with pandas
