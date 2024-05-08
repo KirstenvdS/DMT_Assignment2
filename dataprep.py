@@ -4,6 +4,14 @@ import numpy as np
 from time import time
 import dask.dataframe as dd
 from miceforest import ImputationKernel
+# from sklearnex import patch_sklearn
+# patch_sklearn()
+from sklearn.cluster import KMeans
+from sklearn import preprocessing
+from sklearn.metrics import silhouette_score
+from sklearn.model_selection import train_test_split
+
+
 
 
 
@@ -118,13 +126,25 @@ def clean_all(df):
     df = generate_features(df)
     return df
 
+def clustering(df):
+    subdf = df[["stay_type", "travel_type", "customer_group", "customer_type", "day_of_travel_type"]]
+    subdf_dummies = pd.get_dummies(subdf)
+    subdf_dummies = subdf_dummies.sample(n= 1000) # comment this line if you want to run the clustering on the entire dataset
+    #subdf_norm = preprocessing.normalize(subdf)
+    n_clusters = 10 #took 10 from article, but we should do our own hyperparameter tuning I think
+    kmeans = KMeans(n_clusters, random_state=0, n_init='auto')
+    kmeans.fit(subdf_dummies)
+    SS = silhouette_score(subdf_dummies, kmeans.labels_, metric='euclidean')
+    print(SS)
+
 if __name__ == '__main__':
     # Import dataset
     start = time()
     df = dd.read_csv("training_set_VU_DM.csv")
     df = df.compute() # convert to pandas because no significant performance difference for further calculations
     df = generate_features(df)
-    impute_missing_values(df)
+    #impute_missing_values(df)
+    clustering(df)
     end = time()
     print(f"Total runtime: {end - start}")  # secs
 
