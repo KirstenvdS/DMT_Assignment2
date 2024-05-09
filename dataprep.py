@@ -140,7 +140,7 @@ def clustering(df):
         kmeans.fit(subdf_norm)
         end1 = time()
         print(f"K-means execution took {end1-start} seconds.") # 5 seconds
-        sil_scores[i] = silhouette_score(subdf_norm, kmeans.labels_, metric='euclidean', sample_size=100000) # 100,000: 2 minutes
+        sil_scores[i] = silhouette_score(subdf_norm, kmeans.labels_, metric='euclidean', sample_size=10000) # 100,000: 2 minutes
         end2 = time()
         sses[i] = kmeans.inertia_
         print(f"Silhouette score computation took {end2-end1} seconds.")
