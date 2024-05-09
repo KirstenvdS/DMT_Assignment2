@@ -38,19 +38,9 @@ def impute_missing_values(df):
 
     print(df_sub.dtypes)
 
-    # Following code from https://www.datacamp.com/tutorial/techniques-to-handle-missing-data-values :
-    mice_kernel = ImputationKernel(
-        data=df_sub,
-        variable_schema=["customer_past_spends", "customer_past_starrating"],
-        data_subset=0.1, # only use random 10% of the data for each iteration to save time
-        save_all_iterations=False,
-        save_models=0,
-        random_state=2024  # random seed to make results reproducible
-    )
-    mice_kernel.mice(2, compile_candidates=True) # compile_candidates=True to save time
-    df_sub_imp = mice_kernel.complete_data()
-    print("Customer past spends after imputation: ", df_sub_imp["customer_past_spends"].value_counts(dropna=False)/N)
-    print("Customer past starrating after imputation: ", df_sub_imp["customer_past_starrating"].value_counts(dropna=False)/N)
+    # TODO: imputation
+    #print("Customer past spends after imputation: ", df_sub_imp["customer_past_spends"].value_counts(dropna=False)/N)
+    #print("Customer past starrating after imputation: ", df_sub_imp["customer_past_starrating"].value_counts(dropna=False)/N)
 
     return df
 
@@ -127,15 +117,52 @@ def clean_all(df):
     return df
 
 def clustering(df):
+    # Initialize result data structures
+    num_clusters = range(2,15,1)
+    sil_scores = np.zeros(len(num_clusters))
+    sses = np.zeros(len(num_clusters))
+    print(f"Test for cluster sizes: {num_clusters}")
+
+    # Subset dataframe
     subdf = df[["stay_type", "travel_type", "customer_group", "customer_type", "day_of_travel_type"]]
     subdf_dummies = pd.get_dummies(subdf)
-    subdf_dummies = subdf_dummies.sample(n= 1000) # comment this line if you want to run the clustering on the entire dataset
-    #subdf_norm = preprocessing.normalize(subdf)
-    n_clusters = 10 #took 10 from article, but we should do our own hyperparameter tuning I think
-    kmeans = KMeans(n_clusters, random_state=0, n_init='auto')
-    kmeans.fit(subdf_dummies)
-    SS = silhouette_score(subdf_dummies, kmeans.labels_, metric='euclidean')
-    print(SS)
+    subdf_norm = preprocessing.normalize(subdf_dummies)
+    #subdf_dummies = subdf_dummies.sample(n= 1000) # comment this line if you want to run the clustering on the entire dataset
+    #n_clusters = 10 #took 10 from article, but we should do our own hyperparameter tuning I think
+
+    # Elbow method for k: calculate silhouette score + SSE for each number of clusters
+    for i,n_clusters in enumerate(num_clusters):
+        kmeans = KMeans(n_clusters, init='k-means++', random_state=0,
+                    n_init='auto', max_iter=300, # n_init == 1 if init = k-means++
+                    algorithm='elkan') # x 'elkan' is faster than 'llyod'
+        print(f"Running k-means with {n_clusters} clusters... ")
+        start = time()
+        kmeans.fit(subdf_norm)
+        end1 = time()
+        print(f"K-means execution took {end1-start} seconds.") # 5 seconds
+        sil_scores[i] = silhouette_score(subdf_norm, kmeans.labels_, metric='euclidean', sample_size=100000) # 100,000: 2 minutes
+        end2 = time()
+        sses[i] = kmeans.inertia_
+        print(f"Silhouette score computation took {end2-end1} seconds.")
+        print("Silhouette score: ", sil_scores[i])
+        print(f"SSE: {sses[i]}")
+
+    # Plot results
+    plt.figure(figsize=(15,5))
+    plt.subplot(121)
+    plt.plot(num_clusters, sses, "x-")
+    plt.title("Elbow method for optimal k")
+    plt.xlabel("k (number of clusters)")
+    plt.ylabel("SSE (sum of squared errors)")
+    plt.subplot(122)
+    plt.plot(num_clusters, sil_scores, "x-")
+    plt.title("Silhouette scores")
+    plt.xlabel("k (number of clusters)")
+    plt.ylabel("Silhouette score")
+    plt.savefig("k-hyperparameter-tuning-results-normed-data-ss100,000.png")
+    plt.show()
+
+
 
 if __name__ == '__main__':
     # Import dataset
