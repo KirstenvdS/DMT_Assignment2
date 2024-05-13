@@ -9,7 +9,7 @@ from miceforest import ImputationKernel
 from sklearn.cluster import KMeans
 from sklearn import preprocessing
 from sklearn.metrics import silhouette_score
-from sklearn.model_selection import train_test_split
+
 
 
 
@@ -124,7 +124,7 @@ def clustering(df):
     print(f"Test for cluster sizes: {num_clusters}")
 
     # Subset dataframe
-    subdf = df[["stay_type", "travel_type", "customer_group", "customer_type", "day_of_travel_type"]]
+    subdf = df[["stay_type", "travel_type", "customer_group", "customer_type", "day_of_travel_type", "customer_past_spends", "customer_past_starrating"]]
     subdf_dummies = pd.get_dummies(subdf)
     subdf_norm = preprocessing.normalize(subdf_dummies)
     #subdf_dummies = subdf_dummies.sample(n= 1000) # comment this line if you want to run the clustering on the entire dataset
@@ -140,7 +140,7 @@ def clustering(df):
         kmeans.fit(subdf_norm)
         end1 = time()
         print(f"K-means execution took {end1-start} seconds.") # 5 seconds
-        sil_scores[i] = silhouette_score(subdf_norm, kmeans.labels_, metric='euclidean', sample_size=100000) # 100,000: 2 minutes
+        sil_scores[i] = silhouette_score(subdf_norm, kmeans.labels_, metric='euclidean', sample_size=10000) # 100,000: 2 minutes
         end2 = time()
         sses[i] = kmeans.inertia_
         print(f"Silhouette score computation took {end2-end1} seconds.")
