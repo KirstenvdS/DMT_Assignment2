@@ -116,7 +116,7 @@ def clean_all(df):
     df = generate_features(df)
     return df
 
-def clustering(df):
+def tune_k(df):
     # Initialize result data structures
     num_clusters = range(2,15,1)
     sil_scores = np.zeros(len(num_clusters))
@@ -162,16 +162,31 @@ def clustering(df):
     plt.savefig("k-hyperparameter-tuning-results-normed-data-ss100,000.png")
     plt.show()
 
-
+def add_customer_profile(df, k = 7):
+    n_clusters = k
+    subdf = df[["stay_type", "travel_type", "customer_group", "customer_type", "day_of_travel_type"]]
+    subdf_dummies = pd.get_dummies(subdf)
+    subdf_norm = preprocessing.normalize(subdf_dummies)
+    kmeans = KMeans(n_clusters, init='k-means++', random_state=0,
+                    n_init='auto', max_iter=300,  # n_init == 1 if init = k-means++
+                    algorithm='elkan')  # x 'elkan' is faster than 'llyod'
+    kmeans.fit(subdf_norm)
+    df["customer_segment"] = kmeans.labels_
+    return df
 
 if __name__ == '__main__':
     # Import dataset
     start = time()
     df = dd.read_csv("training_set_VU_DM.csv")
     df = df.compute() # convert to pandas because no significant performance difference for further calculations
+
+    # Generate customer information
     df = generate_features(df)
     #impute_missing_values(df)
-    clustering(df)
+    # Clustering
+    #tune_k(df) # result: 7 is suitable number of clusters
+    df = add_customer_profile(df, 7)
+    print("New variable customer segment: ", df["customer_segment"].value_counts(dropna=False)/len(df.index))
     end = time()
     print(f"Total runtime: {end - start}")  # secs
 
