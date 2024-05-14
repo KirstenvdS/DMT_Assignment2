@@ -159,7 +159,8 @@ def tune_k(df):
     print(f"Test for cluster sizes: {num_clusters}")
 
     # Subset dataframe
-    subdf = df[["stay_type", "travel_type", "customer_group", "customer_type", "day_of_travel_type", "customer_past_spends", "customer_past_starrating"]]
+    subdf = df[["stay_type", "travel_type", "customer_group", "customer_type",
+                "day_of_travel_type", "customer_past_spends", "customer_past_starrating"]]
     subdf_dummies = pd.get_dummies(subdf)
     subdf_norm = preprocessing.normalize(subdf_dummies)
     #subdf_dummies = subdf_dummies.sample(n= 1000) # comment this line if you want to run the clustering on the entire dataset
