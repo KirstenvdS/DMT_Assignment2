@@ -43,8 +43,9 @@ def plot_features(df):
     print("Competitor 6 has availability: \n",df["comp6_inv"].value_counts()/N)
     print("Competitor 7 has availability: \n", df["comp7_inv"].value_counts()/N)
     print("Competitor 8 has availability: \n", df["comp8_inv"].value_counts()/N)
-    print("Number of clicks in total: \n", df["click_bool"].sum()/N)
-    print("Number of bookings in total: \n", df["booking_bool"].sum()/N)
+    print("Percentage of clicks in total: \n", df["click_bool"].sum()/N)
+    print("Percentage of bookings in total: \n", df["booking_bool"].sum()/N)
+    print("Number of bookings in total: \n", df["booking_bool"].sum())
 
     # Number of clicks per search, number of bookings per search
 
@@ -59,6 +60,7 @@ def plot_features(df):
     print("Number of property countries: ", df["prop_country_id"].nunique())
     print("Number of search destinations: ", df["srch_destination_id"].nunique())
     print("Number of visitor country locations: ", df["visitor_location_country_id"].nunique())
+
     return
 
 
@@ -94,7 +96,7 @@ if __name__ == '__main__':
     print(f"Loading csv takes {end-start}.") #22 secs with pandas, 0.02 s with dask
 
     # Plot features
-    #plot_features(df) # runtime ~ 45 seconds
+    plot_features(df) # runtime ~ 45 seconds
     plot_missing_values(df) # runtime ~ 20 seconds
     plot_correlations(df)
     end2 = time()

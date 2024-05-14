@@ -17,6 +17,52 @@ from sklearn.model_selection import train_test_split
 
 def remove_outliers(df):
     """Remove outliers"""
+    #df.boxplot(column="price_usd") # outliers > 1e4
+    #plt.show()
+    #df.boxplot(column="prop_location_score1") #no outliers
+    #plt.show()
+    #df.boxplot(column="prop_location_score2") #no outliers
+    #plt.show()
+    #df.boxplot(column="prop_log_historical_price") # no outliers
+    #plt.show()
+    #df.boxplot(column="srch_length_of_stay") # 4 outliers > 30 nights
+    #plt.show()
+    #df.boxplot(column="srch_booking_window") # no outliers
+    #plt.show()
+    #df.boxplot(column="srch_adults_count")
+    #plt.show()
+    #df.boxplot(column="srch_children_count")
+    #plt.show()
+    #df.boxplot(column="srch_room_count")
+    #plt.show()
+    #df.boxplot(column="srch_query_affinity_score") # maybe exclude all values < 250
+    #plt.show()
+    #df.boxplot(column="orig_destination_distance")
+    #plt.show()
+    #df.boxplot(column="visitor_hist_adr_usd")
+    #plt.show()
+    #df.boxplot(column="visitor_hist_starrating")
+    #plt.show()
+    #df.boxplot(column="prop_starrating")
+    #plt.show()
+    #df.boxplot(column="prop_review_score")
+    #plt.show()
+    #df.boxplot(column="position")
+    #plt.show()
+
+    # Discard rows with outlier prices
+    noutliers = len(df.loc[df["price_usd"] >= 1e4, ].index)
+    print(f"Remove {noutliers} outliers with price >= 10,000.")
+    df = df.loc[df["price_usd"] < 1e4, ]
+
+    df.boxplot(column="gross_bookings_usd") # outliers > 10,000
+    plt.show()
+
+    # Discard rows with outlier length of stay
+    noutliers = len(df.loc[df["srch_length_of_stay"] > 30,].index)
+    print(f"Remove {noutliers} outliers with length of stay > 30.")
+    df = df.loc[df["srch_length_of_stay"] <= 30,]
+
     return df
 
 
@@ -24,24 +70,13 @@ def impute_missing_values(df):
     """Impute missing values using x strategy"""
     N = len(df.index)
 
-    # Impute customer previous star ratings & previous spends
-    df_sub = df[["visitor_location_country_id", "srch_destination_id", "srch_length_of_stay", "srch_booking_window",
-                 "srch_adults_count", "srch_children_count", "srch_room_count", "srch_saturday_night_bool",
-                 "orig_destination_distance", "customer_past_spends", "customer_past_starrating", "customer_type",
-                 "travel_type", "stay_type", "customer_group", "day_of_travel_type"]]
-    cat_features = ["visitor_location_country_id", "srch_destination_id",
-                    "srch_saturday_night_bool", "customer_type", "customer_past_spends", "customer_past_starrating",
-                    "travel_type", "stay_type", "customer_group", "day_of_travel_type"]
-
-    for c in cat_features:
-        df_sub.loc[:, c] = pd.Categorical(df_sub[c])
-
-    print(df_sub.dtypes)
-
-    # TODO: imputation
-    #print("Customer past spends after imputation: ", df_sub_imp["customer_past_spends"].value_counts(dropna=False)/N)
-    #print("Customer past starrating after imputation: ", df_sub_imp["customer_past_starrating"].value_counts(dropna=False)/N)
-
+    # Impute numerical base features with missing = 0
+    nmissing = sum(df["prop_location_score2"].isna())
+    print(f"Replace {nmissing} missing values in prop location score 2. ")
+    df.loc[df["prop_location_score2"].isna(), "prop_location_score2"] = 0
+    nmissing = sum(df["prop_review_score"].isna())
+    print(f"Replace {nmissing} missing values in prop_review_score. ")
+    df.loc[df["prop_review_score"].isna(), "prop_review_score"] = 0
     return df
 
 
@@ -181,8 +216,9 @@ if __name__ == '__main__':
     df = df.compute() # convert to pandas because no significant performance difference for further calculations
 
     # Generate customer information
+    df = impute_missing_values(df)
+    df = remove_outliers(df)
     df = generate_features(df)
-    #impute_missing_values(df)
     # Clustering
     #tune_k(df) # result: 7 is suitable number of clusters
     df = add_customer_profile(df, 7)
