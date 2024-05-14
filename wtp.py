@@ -40,16 +40,46 @@ def estimate_prior_wtp(df):
         print(f"Segment {segment} Coefficients: {np.round(coefficients[:,i],3)}")
 
         # Based on model, estimate distribution for this segment over all data
-        #all_obs_subdf = df.loc[df["customer_segment"] == segment, predictors]
-        booking_proba = model.predict(X) # underestimates bookings!!
+        all_obs_subdf = df.loc[df["customer_segment"] == segment, predictors]
+        booking_proba = model.predict(all_obs_subdf) # underestimates bookings!!
         unique, counts = np.unique(booking_proba, return_counts=True)
         print("booking probabilities: \n", np.asarray((unique, counts)).T)
         sns.kdeplot(model.classes_).set_title(f'Booking probability distribution (Segment {segment})')
         plt.savefig(f"booking_proba_segment_{segment}.png")
         plt.show()
+    return coefficients
 
-def hierarchical_bayes(df):
+def logit(mu):
+    return np.log(mu/(1-mu))
 
+def hierarchical_bayes(df, coefs):
+    """Hierarchical bayes model"""
+    hb_model = pm.Model()
+
+    segment_ind = 0
+    segment = 1
+    predictors = ["prop_starrating", "prop_review_score", "prop_location_score1", "prop_location_score2", "price_usd",
+                  "promotion_flag", "prop_brand_bool"]
+    customer_attributes = ["visitor_location_country_id", "visitor_hist_adr_usd",
+                            "visitor_hist_starrating", "srch_adults_count", "srch_children_count"]
+    all_obs_subdf = df.loc[df["customer_segment"] == segment, predictors]
+    Y = df.loc[df["customer_segment"] == segment, "booking_bool"]
+    W = df.loc[df["customer_segment"] == segment, customer_attributes]
+    with hb_model:
+        # Priors are semi-informative based on multinominal logit
+        alpha = pm.Deterministic('alpha', coefs[0, segment_ind])
+        B=1 #?
+        beta = pm.Normal('beta', mu=coefs[1:, segment_ind], sigma=B, shape=len(predictors))
+        D=1 #?
+        b = pm.Normal("b", mu=0, sigma=D, shape=len(customer_attributes))
+        sigma_e = 1 #?
+        eta = pm.Normal("eta", mu = 0, sigma = sigma_e)
+
+        # Expected value of the outcome
+        mu = alpha + np.matmul(beta, all_obs_subdf) + eta + b * W
+        Y_obs = pm.Bernoulli('Y_obs', p=logit(mu), observed=Y)
+
+    return df
 
 
 if __name__ == '__main__':
@@ -64,6 +94,8 @@ if __name__ == '__main__':
     df = add_customer_profile(df, k=7)
 
     # Estimate prior WTP
-    estimate_prior_wtp(df)
+    coefs = estimate_prior_wtp(df)
+    # Hierarchical Bayes for WTP
+    hierarchical_bayes(df, coefs)
     end = time()
     print('WTP total runtime: %.3f seconds' % (end-start))
