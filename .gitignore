@@ -1,5 +1,6 @@
 # custom 
-.idea
+.idea/
+*.xml
 *.h5
 *.csv
 *.xlsx

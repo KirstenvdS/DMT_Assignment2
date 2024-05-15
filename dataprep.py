@@ -72,7 +72,7 @@ def impute_missing_values(df):
 
     # Impute numerical base features with missing = 0
     nmissing = sum(df["prop_location_score2"].isna())
-    print(f"Replace {nmissing} missing values in prop location score 2. ")
+    print(f"Replace {nmissing} missing values in prop_location_score_2. ")
     df.loc[df["prop_location_score2"].isna(), "prop_location_score2"] = 0
     nmissing = sum(df["prop_review_score"].isna())
     print(f"Replace {nmissing} missing values in prop_review_score. ")
@@ -88,13 +88,13 @@ def generate_features(df):
     cond_high_spends = df.visitor_hist_adr_usd > 160 # value obtained after looking at histogram
     cond_low_spends = df.visitor_hist_adr_usd <= 160
     df["customer_past_spends"] = np.select([cond_high_spends, cond_low_spends], ["high", "low"], pd.NA)
-    print("Customer past spends: ", df["customer_past_spends"].value_counts(dropna=False)/N)
+    #print("Customer past spends: ", df["customer_past_spends"].value_counts(dropna=False)/N)
 
     # Customer previous starrating
     cond_high_stars = df.visitor_hist_starrating > 3.5 # value obtained after looking at histogram
     cond_low_stars = df.visitor_hist_starrating <= 3.5
     df["customer_past_starrating"] = np.select([cond_high_stars, cond_low_stars], ["high", "low"], pd.NA)
-    print("Customer past starrating: ", df["customer_past_starrating"].value_counts(dropna=False)/N)
+    #print("Customer past starrating: ", df["customer_past_starrating"].value_counts(dropna=False)/N)
 
     # Stay type
     cond_single_night = (df.srch_saturday_night_bool == False) & (df.srch_length_of_stay == 1)
@@ -109,14 +109,14 @@ def generate_features(df):
                                  cond_single_night, cond_business_trip],
                                 ["extended_weekend", "weekend", "saturday_night", "long_stay",
                                  "weekday_single_night", "business_trip"], pd.NA)
-    print("Stay type: ", df["stay_type"].value_counts(dropna=False)/N)
+    #print("Stay type: ", df["stay_type"].value_counts(dropna=False)/N)
 
 
 
     # Travel type based on destination and origin
     cond_domestic = df.prop_country_id == df.visitor_location_country_id
     df["travel_type"] = np.select([cond_domestic], ["domestic"], "international")
-    print("Travel type: ", df["travel_type"].value_counts(dropna=False)/N)
+    #print("Travel type: ", df["travel_type"].value_counts(dropna=False)/N)
 
 
     # Customer group
@@ -128,19 +128,19 @@ def generate_features(df):
     df["customer_group"] = np.select([cond_solo, cond_solo_parent_family, cond_couple, cond_nuclear_family,
                                               cond_group], ['solo', 'solo_parent_family', 'couple', 'nuclear_family',
                                                             'group'], pd.NA)
-    print("Customer groups: ", df["customer_group"].value_counts(dropna=False)/N)
+    #print("Customer groups: ", df["customer_group"].value_counts(dropna=False)/N)
 
     # Customer booking lead time
     cutoff = 14 # value obtained from histogram of length of srch_booking_window
     cond_late = df.srch_booking_window <= cutoff
     cond_early_planner = df.srch_booking_window > cutoff
     df["customer_type"] = np.select([cond_late, cond_early_planner], ["late", "early_planner"], pd.NA)
-    print("Customer planning type: ", df["customer_type"].value_counts(dropna=False)/N)
+    #print("Customer planning type: ", df["customer_type"].value_counts(dropna=False)/N)
 
     # Customer's day of travel type, proxy for trip plans
     cond_weekend = df["srch_saturday_night_bool"] == True
     df["day_of_travel_type"] = np.select([cond_weekend], ["weekend"], "weekday")
-    print("Day of travel type: ", df["day_of_travel_type"].value_counts(dropna=False)/N)
+    #print("Day of travel type: ", df["day_of_travel_type"].value_counts(dropna=False)/N)
 
     return df
 

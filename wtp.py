@@ -1,7 +1,7 @@
 from dataprep import generate_features, add_customer_profile, remove_outliers, impute_missing_values
 from time import time
 import pandas as pd
-import pymc3 as pm
+#import pymc3 as pm
 import matplotlib.pyplot as plt
 import numpy as np
 import dask.dataframe as dd
@@ -18,9 +18,9 @@ def estimate_prior_wtp(df):
     subdf = df.loc[df["srch_id"].isin(booking_srch), ["prop_starrating", "prop_review_score", "prop_location_score1",
                                                   "prop_location_score2", "price_usd", "promotion_flag",
                                                   "prop_brand_bool", "customer_segment", "booking_bool"]]
-    print("Percentage of searches with bookings: ", len(subdf.index) / len(df.index))
-    print("Customer segments in reduced dataframe: ", subdf["customer_segment"].value_counts())
-    print("Customer segments (%) in reduced dataframe: ", subdf["customer_segment"].value_counts() / len(subdf.index))
+    #print("Percentage of searches with bookings: ", len(subdf.index) / len(df.index))
+    #print("Customer segments in reduced dataframe: ", subdf["customer_segment"].value_counts())
+    #print("Customer segments (%) in reduced dataframe: ", subdf["customer_segment"].value_counts() / len(subdf.index))
     # Assert no missing values (important for multinomial logit)
     assert not subdf.isna().values.any(), "Assertion Error: Subdf contains NaN"
 
@@ -44,10 +44,7 @@ def estimate_prior_wtp(df):
         booking_proba = model.predict(all_obs_subdf) # underestimates bookings!!
         unique, counts = np.unique(booking_proba, return_counts=True)
         print("booking probabilities: \n", np.asarray((unique, counts)).T)
-        sns.kdeplot(model.classes_).set_title(f'Booking probability distribution (Segment {segment})')
-        plt.savefig(f"booking_proba_segment_{segment}.png")
-        plt.show()
-    return coefficients
+    return coefficients, predictors
 
 def logit(mu):
     return np.log(mu/(1-mu))
@@ -78,7 +75,7 @@ def hierarchical_bayes(df, coefs):
         # Expected value of the outcome
         mu = alpha + np.matmul(beta, all_obs_subdf) + eta + b * W
         Y_obs = pm.Bernoulli('Y_obs', p=logit(mu), observed=Y)
-
+    # TODO: calculate WTP for each attribute and customer segment
     return df
 
 
@@ -94,8 +91,8 @@ if __name__ == '__main__':
     df = add_customer_profile(df, k=7)
 
     # Estimate prior WTP
-    coefs = estimate_prior_wtp(df)
+    coefs, predictors = estimate_prior_wtp(df)
     # Hierarchical Bayes for WTP
-    hierarchical_bayes(df, coefs)
+    #hierarchical_bayes(df, coefs)
     end = time()
     print('WTP total runtime: %.3f seconds' % (end-start))
