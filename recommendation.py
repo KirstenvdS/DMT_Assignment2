@@ -21,15 +21,19 @@ def get_topsis_weights(coefs):
         # Calculate WTP
         beta_price = coefs[price_ind,i]
         wtps = np.zeros(n_predictors)
-        topsis_weights[:,i] = np.linspace(0.5, 1e-4, n_predictors-1)
+        wtp_sum = 0
         for m in range(n_predictors):
             beta_m = coefs[m,i]
             wtps[m] = calculate_wtp(beta_m, beta_price)
             assert wtps[m] > 0, "Value error in WTP, should be > 0. "
+            wtp_sum += wtps[m]
         #print(f"Wtps segment_ind {i}: {np.round(wtps,3)}")
         # Sort ascending, overwrite topsis weights
-        topsis_weights[:,i] = topsis_weights[np.flip(np.argsort(wtps[1:])),i] # Index 0 is for intercept!
-    #print(f"Topsis weights, all segments, sorted according to wtps: {np.round(topsis_weights,3)}.")
+        for m in range(n_predictors-1):
+            topsis_weights[m,i] = wtps[m+1]/wtp_sum
+
+    assert all(np.sum(topsis_weights,axis=1)) <= 1, "Sum of topsis weights must be smaller than 1"
+    print(f"Topsis weights, all segments, sorted according to wtps: {np.round(topsis_weights,3)}.")
     return topsis_weights
 
 def normalize(df):
@@ -176,8 +180,8 @@ if __name__ == '__main__':
     topsis_start = time()
     df = topsis(df, W, coefs)
     # Get NDCG (only possible if training data set)
-    #score = ndcg(df)
-    #print(f"TOPSIS NDCG@5: {score}")
+    score = ndcg(df)
+    print(f"TOPSIS NDCG@5: {score}")
 
     # Write results to submission file
     results = df[["srch_id", "prop_id", "rank"]]

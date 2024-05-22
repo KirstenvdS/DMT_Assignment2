@@ -61,7 +61,7 @@ def hierarchical_bayes(df, coefs):
     all_obs_subdf = df.loc[df["customer_segment"] == segment, predictors].astype(float)
     Y = df.loc[df["customer_segment"] == segment, "booking_bool"].astype(float)
     W = df.loc[df["customer_segment"] == segment, customer_attributes].astype(float)
-    intercept = coefs[0, segment_ind]x
+    intercept = coefs[0, segment_ind]
     hb_model = pm.Model()
     with hb_model:
         # Priors are semi-informative based on multinominal logit
@@ -75,7 +75,7 @@ def hierarchical_bayes(df, coefs):
         eta = pm.Normal("eta", mu = 0, sigma = sigma_e)
 
         # Expected value of the outcome
-        mu = alpha + (beta[:] * all_obs_subdf).sum(axis=1) +(b * W).sum(axis=1) + eta
+        mu = alpha + (beta[:] * all_obs_subdf).sum(axis=1) +(b[:] * W).sum(axis=1) + eta
         print(f"Calculated mu: {mu[0]}")
         Y_obs = pm.Bernoulli('Y_obs', p=logit(mu), observed=Y)
 
